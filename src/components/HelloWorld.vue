@@ -39,7 +39,9 @@ import { ZegoAPI } from "../network/ZegoAPI";
 import { ref } from 'vue';
 import { Timer } from '@/utils/Timer';
 
-const zegoApi = new ZegoAPI('http://192.168.90.180:3000');
+import {AppID, RtcServer, SignatureServer} from '../config.json'
+
+const zegoApi = new ZegoAPI(SignatureServer);
 
 const tipMessage = ref('')
 const errorMessage = ref('')
@@ -64,7 +66,7 @@ let isInited = false
 async function initRTC() {
   tipMessage.value = 'Initializing RTC...'
   // 初始化实例
-  const zg = new ZegoExpressEngine(2508486932, 'wss://webliveroom2508486932-api.imzego.com/ws');
+  const zg = new ZegoExpressEngine(AppID, RtcServer);
 
   // 房间状态更新回调
   // 此处在登录房间成功后，立即进行推流。在实现具体业务时，您可选择其他时机进行推流，只要保证当前房间连接状态是连接成功的即可。

@@ -1,0 +1,5 @@
+{
+    "AppID": 2508486932,
+    "RtcServer": "wss://webliveroom2508486932-api.imzego.com/ws",
+    "SignatureServer": "//preview-digital-ai.zegotech.cn/api"
+}
