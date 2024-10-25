@@ -16,9 +16,11 @@ interface IResponse {
 
 export class ZegoAPI {
     private signatureServerUrl: string;
+    private apiServerUrl: string;
 
-    constructor(signatureServerUrl: string) {
+    constructor(signatureServerUrl: string, apiServerUrl: string) {
         this.signatureServerUrl = signatureServerUrl;
+        this.apiServerUrl = apiServerUrl
     }
 
     private async getSignature(): Promise<{ appID: string, signature: string, signatureNonce: string, timeStamp: number }> {
@@ -53,7 +55,7 @@ export class ZegoAPI {
     public async sendRequest(options: IRequestOptions): Promise<IResponse> {
         const { appID, signature, signatureNonce, timeStamp } = await this.getSignature();
 
-        const url = `https://aigc-api.zegotech.cn/?Action=${options.action}&AppId=${appID}&Signature=${signature}&SignatureNonce=${signatureNonce}&Timestamp=${timeStamp}&SignatureVersion=2.0`;
+        const url = `${this.apiServerUrl}?Action=${options.action}&AppId=${appID}&Signature=${signature}&SignatureNonce=${signatureNonce}&Timestamp=${timeStamp}&SignatureVersion=2.0`;
 
         try {
             const response = await axios({

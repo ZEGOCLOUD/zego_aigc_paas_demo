@@ -3,7 +3,7 @@
     <div class="left-panel ">
       <!-- 左侧内容 -->
       <div class="panel-header clearfix">
-        <div class="voice-selector">
+        <div v-if="false" class="voice-selector">
           <select v-model="selectedTimbre" class="custom-select">
             <option v-for="voice in timbreList" :key="voice.value" :value="voice.value">
               {{ voice.label }}
@@ -68,12 +68,12 @@ const getUrlParam = (key: string) => {
 
 const isTest = parseInt(getUrlParam('test')) === 1
 
-const { AppID, RtcServer } = config
+const { AppID, RtcServer, ApiServer } = config
 
 const { SignatureServer, MaxLiveTime } = config[isTest ? 'Test' : 'Prod']
 
 
-const zegoApi = new ZegoAPI(SignatureServer);
+const zegoApi = new ZegoAPI(SignatureServer, ApiServer);
 
 const tipMessages = ref<string[]>([])
 const errorMessage = ref('')
@@ -94,7 +94,7 @@ const timbreList = ref([
   { value: '358f2618-1eb5-4306-99e9-28efb02d5094', label: 'Voice2' },
 ]);
 
-const selectedTimbre = ref(timbreList.value[0].value)
+const selectedTimbre = ref(timbreList.value[1].value)
 
 watch(selectedTimbre, (newVal, oldVal) => {
   throwTips('Selected new voice, need to stop and start again')
@@ -284,9 +284,9 @@ async function loopCheckAliveDigitalHuman(taskID: string) {
   if (status === DigitalHumanStatus.Pushing) {
     throwTips('DigitalHuman task alive')
     onInitDigitalHumanSuccess()
-  } else if(status === DigitalHumanStatus.Initializing){
+  } else if (status === DigitalHumanStatus.Initializing) {
     setTimeout(() => loopCheckAliveDigitalHuman(taskID), 1500)
-  }else{
+  } else {
     // 已经出错了, 不要轮训了
     throwError(-1, 'DigitalHuman task dead')
   }
@@ -476,7 +476,7 @@ a {
   overflow-y: auto;
   /* 添加垂直滚动条 */
 
-  padding: 10px 20px;
+  padding: 10px;
   background-color: #f8f9fa;
   /* 浅灰色背景 */
   border: 1px solid #ced4da;
