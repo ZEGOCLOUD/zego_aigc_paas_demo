@@ -1,14 +1,26 @@
 <template>
   <div class="container">
-    <div class="left-panel">
+    <div class="left-panel ">
       <!-- 左侧内容 -->
+      <div class="panel-header clearfix">
+        <div class="voice-selector">
+          <select v-model="selectedTimbre" class="custom-select">
+            <option v-for="voice in timbreList" :key="voice.value" :value="voice.value">
+              {{ voice.label }}
+            </option>
+          </select>
+        </div>
+        <div class="version-container">
+          <sub>v: {{ seed }}</sub>
+        </div>
+      </div>
       <h1>
         Actions
       </h1>
-      <sub>v: {{ seed }}</sub>
+
       <p></p>
       <div class="button-container">
-        <button @click="onStartClick" class="button start-button">1. Init First</button>
+        <button @click="onStartClick" class="button start-button">1. Start Init</button>
       </div>
       <div v-if="errorMessage" class="error-tip">
         {{ errorMessage }}
@@ -32,7 +44,7 @@
     <div class="right-panel">
       <!-- 右侧内容 -->
       <h1>
-        PaaS  Digital Human
+        PaaS Digital Human
       </h1>
       <h4>Time Limit {{ remainTime }}s</h4>
       <div id="remote-video"></div>
@@ -43,7 +55,7 @@
 <script lang="ts" setup>
 import { ZegoExpressEngine } from 'zego-express-engine-webrtc'
 import { ZegoAPI } from "../network/ZegoAPI";
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import { Timer } from '@/utils/Timer';
 
 import config from '../config.json'
@@ -76,8 +88,17 @@ const rtcStreamID = 'stream_digitalhuman_' + seed
 
 // 楚瑶的MetaHumanID
 const metaHumanID = "2929ebf1-a443-4d41-b414-81d9f107992a"
-// 音色: 活力甜妹
-const timbreID = "4e79abb9-6dc9-44ef-b9ca-6f0da9620a6c"
+
+const timbreList = ref([
+  { value: '5611f5db-42ea-435f-8f02-0562833c3717', label: 'Voice1' },
+  { value: '358f2618-1eb5-4306-99e9-28efb02d5094', label: 'Voice2' },
+]);
+
+const selectedTimbre = ref(timbreList.value[0].value)
+
+watch(selectedTimbre, (newVal, oldVal) => {
+  throwTips('Selected new voice, need to stop and start again')
+});
 
 function throwTips(message: string) {
   tipMessages.value.push(message)
@@ -150,24 +171,30 @@ function throwError(code: number, message: string) {
   errorMessage.value = `${code}: ${getResponseCodeDescriptionEnSafe(code)}`
 }
 
-async function checkAliveDigitalHuman(taskID: string) {
+// 1：视频流任务初始化中。
+// 2：视频流任务初始化失败。
+// 3：推流中。
+// 4：正在停止推流。
+// 5：已停止推流。
+enum DigitalHumanStatus {
+  Initializing = 1,
+  InitFailed = 2,
+  Pushing = 3,
+  Stopping = 4,
+  Stopped = 5
+}
+
+async function checkAliveDigitalHuman(taskID: string): Promise<DigitalHumanStatus> {
   // 查询视频流任务状态
   let result = await zegoApi.describeMetaHumanLive(taskID);
   console.log(result);
   if (result.Code !== 0) {
     throwError(result.Code, result.Message)
-    return false
+    return DigitalHumanStatus.InitFailed
   }
-  // 1：视频流任务初始化中。
-  // 2：视频流任务初始化失败。
-  // 3：推流中。
-  // 4：正在停止推流。
-  // 5：已停止推流。
-  if (result.Data.Status === 1 || result.Data.Status === 3) {
-    // 开始推流了, 可以拉流
-    return true
-  }
-  return false
+
+  return result.Data.Status;
+
 }
 
 async function createNewDigitalHuman(roomID: string, streamID: string, metaHumanID: string) {
@@ -253,12 +280,15 @@ function onInitDigitalHumanSuccess() {
 }
 
 async function loopCheckAliveDigitalHuman(taskID: string) {
-  const isAlive = await checkAliveDigitalHuman(taskID)
-  if (isAlive) {
+  const status = await checkAliveDigitalHuman(taskID)
+  if (status === DigitalHumanStatus.Pushing) {
     throwTips('DigitalHuman task alive')
     onInitDigitalHumanSuccess()
-  } else {
+  } else if(status === DigitalHumanStatus.Initializing){
     setTimeout(() => loopCheckAliveDigitalHuman(taskID), 1500)
+  }else{
+    // 已经出错了, 不要轮训了
+    throwError(-1, 'DigitalHuman task dead')
   }
 }
 
@@ -269,11 +299,16 @@ async function initDigitalHuman() {
   let taskID = localStorage.lastTaskID
   if (taskID) {
     throwTips('Checking last task...')
-    const isAlive = await checkAliveDigitalHuman(taskID)
-    if (isAlive) {
+    const status = await checkAliveDigitalHuman(taskID)
+    if (status === DigitalHumanStatus.Pushing) {
       // 如果有存活, 就不管了, 拉流就行
       throwTips('Last task is alive')
       onInitDigitalHumanSuccess()
+      return
+    } else if (status === DigitalHumanStatus.Initializing) {
+      // 还在初始化, 等检测
+      throwTips('Waiting new task alive...')
+      loopCheckAliveDigitalHuman(taskID)
       return
     }
   }
@@ -300,7 +335,7 @@ async function sendText(taskID: string, text: string) {
     Driver: {
       DriverType: 1,
       Text: text,
-      TimbreId: timbreID,
+      TimbreId: selectedTimbre.value,
     }
   })
 
@@ -336,7 +371,7 @@ async function onStartClick() {
 async function onSendClick() {
   console.log("onSendClick: " + inputText.value);
   if (isInited.value) {
-    if(!inputText.value){
+    if (!inputText.value) {
       throwTips('Please input text!')
       return
     }
@@ -403,6 +438,7 @@ a {
   /* 背景颜色 */
   padding: 20px;
   box-sizing: border-box;
+  position: relative;
 }
 
 .right-panel {
@@ -413,6 +449,8 @@ a {
   padding: 20px;
   box-sizing: border-box;
 }
+
+
 
 #remote-video {
   width: 960px;
@@ -536,5 +574,55 @@ a {
   width: 100%;
   margin-bottom: 20px;
 
+}
+
+.panel-header {
+  position: relative;
+}
+
+.version-container {
+  float: left;
+}
+
+.voice-selector {
+  float: right;
+  margin: 10px;
+  /* 调整边距以适应布局 */
+}
+
+.custom-select {
+  /* 基本样式 */
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #333;
+  appearance: none;
+  /* 移除默认的下拉箭头 */
+  -webkit-appearance: none;
+  /* Safari 和 Chrome */
+  -moz-appearance: none;
+  /* Firefox */
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 20px;
+  width: 100px;
+  /* 调整宽度 */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.custom-select:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  outline: none;
+}
+
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
 }
 </style>
