@@ -336,6 +336,10 @@ async function onStartClick() {
 async function onSendClick() {
   console.log("onSendClick: " + inputText.value);
   if (isInited.value) {
+    if(!inputText.value){
+      throwTips('Please input text!')
+      return
+    }
     const succeed = await sendText(localStorage.lastTaskID, inputText.value)
     if (succeed) {
       inputText.value = ''
