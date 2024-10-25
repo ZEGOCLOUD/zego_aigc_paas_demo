@@ -24,3 +24,39 @@
 - **进入目录**：`cd ./src`
 - **安装依赖**：`npm install`
 - **启动服务**：`npm run serve`
+
+
+## 附录：配置国内 `npm` 源并安装 `pnpm` 
+
+### 1. 配置国内 npm 源
+
+为了加快依赖包的下载速度，可以将 npm 源切换为国内的镜像源。
+
+```bash
+npm config set registry https://registry.npmmirror.com
+```
+
+### 2. 安装 pnpm
+
+通过 npm 来安装 pnpm：
+
+```bash
+npm install -g pnpm
+```
+
+### 3. 验证安装
+
+安装完成后，可以通过以下命令来验证 pnpm 是否安装成功：
+
+```bash
+pnpm -v
+```
+
+### 4. 安装项目依赖
+
+进入你的项目目录，使用 pnpm 安装项目依赖：
+
+```bash
+cd your-project-directory
+pnpm install
+```
