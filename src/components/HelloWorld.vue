@@ -3,15 +3,19 @@
     <div class="left-panel ">
       <!-- 左侧内容 -->
       <div class="panel-header clearfix">
-        <div v-if="false" class="voice-selector">
+        <div class="voice-selector">
           <select v-model="selectedTimbre" class="custom-select">
             <option v-for="voice in timbreList" :key="voice.value" :value="voice.value">
               {{ voice.label }}
             </option>
           </select>
         </div>
-        <div class="version-container">
-          <sub>v: {{ seed }}</sub>
+        <div class="human-selector">
+          <select v-model="selectedHuman" class="custom-select">
+            <option v-for="human in humanList" :key="human.value" :value="human.value">
+              {{ human.label }}
+            </option>
+          </select>
         </div>
       </div>
       <h1>
@@ -21,6 +25,7 @@
       <p></p>
       <div class="button-container">
         <button @click="onStartClick" class="button start-button">1. Start Init</button>
+        &nbsp;<sub>v: {{ seed }}</sub>
       </div>
       <div v-if="errorMessage" class="error-tip">
         {{ errorMessage }}
@@ -86,15 +91,24 @@ const rtcRoomID = 'zego_test_' + seed
 const rtcUserID = 'test_user_' + seed
 const rtcStreamID = 'stream_digitalhuman_' + seed
 
-// 楚瑶的MetaHumanID
-const metaHumanID = "2929ebf1-a443-4d41-b414-81d9f107992a"
-
-const timbreList = ref([
-  { value: '5611f5db-42ea-435f-8f02-0562833c3717', label: 'Voice1' },
-  { value: '358f2618-1eb5-4306-99e9-28efb02d5094', label: 'Voice2' },
+const humanList = ref([
+  { value: '2929ebf1-a443-4d41-b414-81d9f107992a', label: 'Man(1.6)' },
+  { value: '14c12c0a-5b9f-4a2c-a381-861142e51593', label: 'Woman(2.0)' },
 ]);
 
-const selectedTimbre = ref(timbreList.value[1].value)
+const selectedHuman = ref(humanList.value[1].value)
+
+const timbreList = ref([
+  { value: '5611f5db-42ea-435f-8f02-0562833c3717', label: 'ManVoice1' },
+  { value: '358f2618-1eb5-4306-99e9-28efb02d5094', label: 'ManVoice2' },
+
+  { value: 'd88b47af-ef58-485f-a9e1-e1dbfeae3879', label: 'WomanVoice1' },
+  { value: '2974dd0a-00c5-4000-8421-715753e36c07', label: 'WomanVoice2' },
+  { value: 'aef8a17e-4a22-42d7-8057-a72acd3b19f4', label: 'WomanVoice3' },
+  { value: '2c15780e-2e04-4e92-8e3d-75f5fd762e6a', label: 'WomanVoice4' },
+]);
+
+const selectedTimbre = ref(timbreList.value[2].value)
 
 watch(selectedTimbre, (newVal, oldVal) => {
   throwTips('Selected new voice, need to stop and start again')
@@ -314,7 +328,7 @@ async function initDigitalHuman() {
   }
   // 没有在推流的, 重新创建
   throwTips('Creating new task...')
-  taskID = await createNewDigitalHuman(rtcRoomID, rtcStreamID, metaHumanID)
+  taskID = await createNewDigitalHuman(rtcRoomID, rtcStreamID, selectedHuman.value)
 
   if (taskID) {
     localStorage.lastTaskID = taskID
@@ -580,14 +594,14 @@ a {
   position: relative;
 }
 
-.version-container {
+.human-selector {
   float: left;
+  margin: 10px;
 }
 
 .voice-selector {
   float: right;
   margin: 10px;
-  /* 调整边距以适应布局 */
 }
 
 .custom-select {
@@ -608,11 +622,19 @@ a {
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 20px;
-  width: 100px;
   /* 调整宽度 */
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   transition: border-color 0.3s, box-shadow 0.3s;
 }
+
+.human-selector .custom-select {
+  width: 150px;
+}
+
+.voice-selector .custom-select {
+  width: 150px;
+}
+
 
 .custom-select:focus {
   border-color: #007bff;
