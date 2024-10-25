@@ -23,11 +23,11 @@ app.use(cors());
 // 使用 express.json() 中间件来解析 JSON 请求体
 app.use(express.json());
 
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
   res.send('Hello World!');
 });
 
-app.post('/signature', (req, res) => {
+app.post('/api/signature', (req, res) => {
   const signatureNonce = crypto.randomBytes(8).toString('hex');
   //使用你的appId和serverSecret
   const timeStamp = Math.round(Date.now() / 1000);
@@ -40,7 +40,7 @@ app.post('/signature', (req, res) => {
   })
 });
 
-app.post('/token', (req, res) => {
+app.post('/api/token', (req, res) => {
 
   const { userID } = req.body
 

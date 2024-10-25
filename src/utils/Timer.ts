@@ -36,6 +36,9 @@ export class Timer {
         }
     }
     tick() {
+        if(!this.isRunning){
+            return
+        }
         const elapsed = Date.now() - this.startTime;
         const deltaElapsed = elapsed - this.lastElapsed;
         this.lastElapsed = elapsed;

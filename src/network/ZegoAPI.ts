@@ -59,7 +59,7 @@ export class ZegoAPI {
             const response = await axios({
                 method: options.method || 'GET',
                 url: url,
-                params: options.params,
+                data: options.params,
             });
 
             return response.data;
@@ -104,6 +104,7 @@ export class ZegoAPI {
             MetaHumanId: string;
             Layout: object;
         };
+        Assets?: object[];
         VideoOption: object;
         MaxLiveTime: number;
     }): Promise<IResponse> {

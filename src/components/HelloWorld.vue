@@ -5,20 +5,27 @@
       <h1>
         Actions
       </h1>
+      <sub>v: {{ seed }}</sub>
+      <p></p>
       <div class="button-container">
-        <button @click="onStartClick" class="start-button">1. Init First</button>
-      </div>
-
-      <div class="tip">
-        {{ tipMessage }}
+        <button @click="onStartClick" class="button start-button">1. Init First</button>
       </div>
       <div v-if="errorMessage" class="error-tip">
         {{ errorMessage }}
       </div>
+      <div v-if="tipMessages.length" class="tip-container">
+        <div class="tip" v-for="(tip, index) in tipMessages" :key="index">
+          {{ tip }}
+        </div>
+      </div>
 
-      <div class="input-container">
-        <textarea v-model="inputText" class="textarea"></textarea>
-        <button @click="onSendClick" class="send-button">2. Send Text</button>
+      <div v-if="isInited" class="input-container">
+        <textarea v-model="inputText" class="textarea" placeholder="Input text to drive digital human"></textarea>
+        <button @click="onSendClick" class="button send-button">2. Send Text</button>
+      </div>
+
+      <div v-if="isInited" class="button-container2">
+        <button @click="onStopClick" class="button stop-button">3. Stop if finish</button>
       </div>
 
     </div>
@@ -36,35 +43,57 @@
 <script lang="ts" setup>
 import { ZegoExpressEngine } from 'zego-express-engine-webrtc'
 import { ZegoAPI } from "../network/ZegoAPI";
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { Timer } from '@/utils/Timer';
 
-import {AppID, RtcServer, SignatureServer} from '../config.json'
+import config from '../config.json'
+import { getResponseCodeDescriptionEnSafe, getResponseCodeDescriptionSafe } from '@/network/APIError';
+
+const getUrlParam = (key: string) => {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(key) || '';
+};
+
+const isTest = parseInt(getUrlParam('test')) === 1
+
+const { AppID, RtcServer } = config
+
+const { SignatureServer, MaxLiveTime } = config[isTest ? 'Test' : 'Prod']
+
 
 const zegoApi = new ZegoAPI(SignatureServer);
 
-const tipMessage = ref('')
+const tipMessages = ref<string[]>([])
 const errorMessage = ref('')
 const inputText = ref("Good morning! Today, I stand before you to talk about the power of unity. In a world that often seems divided, it's easy to forget that we are all part of the same human family. Our differences should be celebrated, not feared. ")
 
 
-const seed = localStorage.seed || Date.now()
+const seed = parseInt(getUrlParam('seed'), 10) || localStorage.seed || Date.now();
 localStorage.seed = seed
 const rtcRoomID = 'zego_test_' + seed
 const rtcUserID = 'test_user_' + seed
 const rtcStreamID = 'stream_digitalhuman_' + seed
 
 // 楚瑶的MetaHumanID
-const metaHumanID = "59fe268f-4c17-4bcf-963a-335dfdfd96e1"
+const metaHumanID = "2929ebf1-a443-4d41-b414-81d9f107992a"
 // 音色: 活力甜妹
-const timbreID = "721fc3e5-7f43-4da1-887b-1db26435eafd"
-// 最大推流时长
-const maxLiveTime = 3 * 60
+const timbreID = "4e79abb9-6dc9-44ef-b9ca-6f0da9620a6c"
 
-let isInited = false
+function throwTips(message: string) {
+  tipMessages.value.push(message)
+  nextTick(scrollToBottom)
+}
+
+const scrollToBottom = () => {
+  const container = document.querySelector('.tip-container');
+  if (container) {
+    container.scrollTop = container.scrollHeight;
+  }
+};
+let isInited = ref(false)
 
 async function initRTC() {
-  tipMessage.value = 'Initializing RTC...'
+  throwTips('Initializing RTC...')
   // 初始化实例
   const zg = new ZegoExpressEngine(AppID, RtcServer);
 
@@ -73,7 +102,7 @@ async function initRTC() {
   // 房间状态更新回调
   zg.on('roomStateChanged', async (roomID, reason, errorCode, extendedData) => {
     if (reason == 'LOGINED') {
-      console.log("与房间连接成功，只有当房间状态是连接成功时，才能进行推流、拉流等操作。")
+      console.warn("与房间连接成功，只有当房间状态是连接成功时，才能进行推流、拉流等操作。")
     }
   })
 
@@ -88,7 +117,7 @@ async function initRTC() {
       // 流新增，开始拉流
       // 此处演示拉取流新增的列表中第一条流的音视频
       const streamID = streamList[0].streamID;
-      console.log("[Zego]room stream update: " + streamID)
+      console.warn("[Zego]room stream update: " + streamID)
       // streamList 中有对应流的 streamID
       const remoteStream = await zg.startPlayingStream(streamID);
       // 创建媒体流播放组件
@@ -106,18 +135,19 @@ async function initRTC() {
 
   const result = await zg.loginRoom(rtcRoomID, token, { userID: rtcUserID, userName: rtcUserID }, { userUpdate: true })
   if (result == true) {
-    tipMessage.value = 'RTC initialized'
+    throwTips('RTC initialized')
     return true
   } else {
-    tipMessage.value = 'RTC init failure!!!'
+    throwTips('RTC init failure!!!')
     return false
   }
 
 }
 
-function throwError(message: string){
-  alert(message)
-  errorMessage.value = message
+function throwError(code: number, message: string) {
+  console.error(`${code}: ${message} \n${getResponseCodeDescriptionSafe(code)}`)
+  alert(`${code}: ${getResponseCodeDescriptionEnSafe(code)}`)
+  errorMessage.value = `${code}: ${getResponseCodeDescriptionEnSafe(code)}`
 }
 
 async function checkAliveDigitalHuman(taskID: string) {
@@ -125,7 +155,7 @@ async function checkAliveDigitalHuman(taskID: string) {
   let result = await zegoApi.describeMetaHumanLive(taskID);
   console.log(result);
   if (result.Code !== 0) {
-    throwError(`${result.Code}: ${result.Message}`)
+    throwError(result.Code, result.Message)
     return false
   }
   // 1：视频流任务初始化中。
@@ -133,7 +163,7 @@ async function checkAliveDigitalHuman(taskID: string) {
   // 3：推流中。
   // 4：正在停止推流。
   // 5：已停止推流。
-  if (result.Data.Status === 3) {
+  if (result.Data.Status === 1 || result.Data.Status === 3) {
     // 开始推流了, 可以拉流
     return true
   }
@@ -149,22 +179,35 @@ async function createNewDigitalHuman(roomID: string, streamID: string, metaHuman
       MetaHumanId: metaHumanID,
       Layout: {
         "Top": 0,
-        "Left": 0,
-        "Width": 1080,
-        "Height": 1920,
-        "Layer": 0
+        "Left": 690,
+        "Width": 540,
+        "Height": 960,
+        "Layer": 1
       },
     },
+    Assets: [{
+      "AssetType": 1,
+      // 图片分辨率 1052 * 592
+      "AssetUrl": "https://zego-aigc-test.oss-accelerate.aliyuncs.com/bg/20241025/b7adee2e-efcb-435d-b11d-e4df19c5f0d7.png",
+      "Layout": {
+        "Top": 0,
+        "Left": 0,
+        "Width": 1920,
+        "Height": 1080,
+        "Layer": 0
+      }
+    }
+    ],
     VideoOption: {
-      "Width": 1080,
-      "Height": 1920
+      "Width": 1920,
+      "Height": 1080
     },
-    MaxLiveTime: maxLiveTime,
+    MaxLiveTime: MaxLiveTime,
   })
 
   console.log(result);
   if (result.Code !== 0) {
-    throwError(`${result.Code}: ${result.Message}`)
+    throwError(result.Code, result.Message)
     return null
   }
   return result.Data.TaskId;
@@ -175,7 +218,7 @@ async function queryMetaHuman() {
   let result = await zegoApi.describeMetaHumanModel();
   console.log(result);
   if (result.Code !== 0) {
-    throwError(`${result.Code}: ${result.Message}`)
+    throwError(result.Code, result.Message)
     return
   }
 
@@ -185,7 +228,7 @@ async function queryMetaHuman() {
   result = await zegoApi.describeMetaHumanModelDetail(modelID);
   console.log(result);
   if (result.Code !== 0) {
-    throwError(`${result.Code}: ${result.Message}`)
+    throwError(result.Code, result.Message)
     return
   }
 }
@@ -194,61 +237,64 @@ async function queryMetaHumanVoice(metaHumanId: string) {
   const result = await zegoApi.describeTimbreByMetaHuman(metaHumanId);
   console.log(result);
   if (result.Code !== 0) {
-    throwError(`${result.Code}: ${result.Message}`)
+    throwError(result.Code, result.Message)
     return
   }
 }
 
 function onInitDigitalHumanSuccess() {
-  isInited = true;
+  isInited.value = true;
   timingTimer.start()
   if (localStorage.startTime) {
     // 已经开始过了的, 矫正时间, 
     const useTime = ~~((Date.now() - parseInt(localStorage.startTime)) / 1000)
-    remainTime.value = maxLiveTime - useTime
+    remainTime.value = MaxLiveTime - useTime
+  }
+}
+
+async function loopCheckAliveDigitalHuman(taskID: string) {
+  const isAlive = await checkAliveDigitalHuman(taskID)
+  if (isAlive) {
+    throwTips('DigitalHuman task alive')
+    onInitDigitalHumanSuccess()
+  } else {
+    setTimeout(() => loopCheckAliveDigitalHuman(taskID), 1500)
   }
 }
 
 async function initDigitalHuman() {
-  tipMessage.value = 'Initializing DigitalHuman...'
+  throwTips('Initializing DigitalHuman...')
 
   // 检查一下有没有已经在推流的数字人
   let taskID = localStorage.lastTaskID
   if (taskID) {
-    tipMessage.value = 'Checking last task...'
+    throwTips('Checking last task...')
     const isAlive = await checkAliveDigitalHuman(taskID)
     if (isAlive) {
       // 如果有存活, 就不管了, 拉流就行
-      tipMessage.value = 'Last task is alive'
+      throwTips('Last task is alive')
       onInitDigitalHumanSuccess()
       return
     }
   }
   // 没有在推流的, 重新创建
-  tipMessage.value = 'Creating new task...'
+  throwTips('Creating new task...')
   taskID = await createNewDigitalHuman(rtcRoomID, rtcStreamID, metaHumanID)
 
   if (taskID) {
     localStorage.lastTaskID = taskID
     localStorage.startTime = Date.now()
-    // 创建成功, 等推流, 写个loop 1s 检测一次 checkAliveDigitalHuman
-    tipMessage.value = 'Waiting new task alive...'
-    const interval = setInterval(async () => {
-      const isAlive = await checkAliveDigitalHuman(taskID)
-      if (isAlive) {
-        clearInterval(interval)
-        tipMessage.value = 'DigitalHuman task alive'
-        onInitDigitalHumanSuccess()
-      }
-    }, 1000)
+    // 创建成功, 等推流, 写个 loop 2s 检测一次 checkAliveDigitalHuman
+    throwTips('Waiting new task alive...')
+    loopCheckAliveDigitalHuman(taskID)
   } else {
-    tipMessage.value = 'DigitalHuman task create failure'
+    throwTips('DigitalHuman task create failure')
   }
 }
 
 
 async function sendText(taskID: string, text: string) {
-  tipMessage.value = 'Seding text...'
+  throwTips('Seding text...')
   const result = await zegoApi.driveMetaHumanLive({
     TaskId: taskID,
     Driver: {
@@ -260,19 +306,20 @@ async function sendText(taskID: string, text: string) {
 
   console.log(result);
   if (result.Code !== 0) {
-    throwError(`${result.Code}: ${result.Message}`)
-    return
+    throwError(result.Code, result.Message)
+    return false
   }
-  tipMessage.value = 'Seding text success'
+  throwTips('Seding text success')
+  return true
 }
 
 
-const remainTime = ref(maxLiveTime)
+const remainTime = ref(MaxLiveTime)
 
 const timingTimer = new Timer(elapsed => {
   remainTime.value -= 1
   if (remainTime.value <= 0) {
-    tipMessage.value = 'Time over. Refresh page please!'
+    throwTips('Time over. Refresh page please!')
     timingTimer.stop()
   }
 }, 1000)
@@ -287,12 +334,34 @@ async function onStartClick() {
 
 async function onSendClick() {
   console.log("onSendClick: " + inputText.value);
-  if (isInited) {
-    sendText(localStorage.lastTaskID, inputText.value)
+  if (isInited.value) {
+    const succeed = await sendText(localStorage.lastTaskID, inputText.value)
+    if (succeed) {
+      inputText.value = ''
+    }
+
   } else {
-    tipMessage.value = 'Not init, please wait'
+    throwTips('Not init, please init and wait')
   }
 }
+
+async function onStopClick() {
+  console.log("onStopClick");
+  if (isInited.value) {
+    const result = await zegoApi.stopMetaHumanLive(localStorage.lastTaskID);
+    console.log(result);
+    if (result.Code !== 0) {
+      throwError(result.Code, result.Message)
+      return
+    } else {
+      isInited.value = false
+      localStorage.clear()
+    }
+  } else {
+    throwTips('Not init, no need stop')
+  }
+}
+
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
@@ -340,8 +409,8 @@ a {
 }
 
 #remote-video {
-  width: 540px;
-  height: 720px;
+  width: 720px;
+  height: 540px;
   border: 1px solid #dfdfdf;
 }
 
@@ -357,8 +426,12 @@ a {
   position: relative !important;
 }
 
+.tip-container {
+  max-height: 200px;
+  /* 设置最大高度 */
+  overflow-y: auto;
+  /* 添加垂直滚动条 */
 
-.tip {
   padding: 10px 20px;
   background-color: #f8f9fa;
   /* 浅灰色背景 */
@@ -385,23 +458,34 @@ a {
   margin-bottom: 20px;
 }
 
-.start-button,
-.send-button {
+.button {
   padding: 10px 20px;
   background-color: #007bff;
   /* 蓝色背景 */
   color: white;
   border: none;
   border-radius: 5px;
+  min-width: 150px;
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
-.start-button:hover,
-.send-button:hover {
+.button:hover {
   background-color: #0056b3;
   /* 悬停时更深的蓝色 */
+}
+
+.button-container2 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.stop-button {
+  background-color: #d83d4f;
 }
 
 .textarea {
@@ -444,6 +528,7 @@ a {
   flex-direction: column;
   align-items: flex-end;
   width: 100%;
+  margin-bottom: 20px;
 
 }
 </style>
