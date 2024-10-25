@@ -98,6 +98,10 @@ const humanList = ref([
 
 const selectedHuman = ref(humanList.value[1].value)
 
+watch(selectedHuman, (newVal, oldVal) => {
+  throwTips('Selected new human, need to stop and start again')
+});
+
 const timbreList = ref([
   { value: '5611f5db-42ea-435f-8f02-0562833c3717', label: 'ManVoice1' },
   { value: '358f2618-1eb5-4306-99e9-28efb02d5094', label: 'ManVoice2' },
@@ -296,7 +300,7 @@ function onInitDigitalHumanSuccess() {
 async function loopCheckAliveDigitalHuman(taskID: string) {
   const status = await checkAliveDigitalHuman(taskID)
   if (status === DigitalHumanStatus.Pushing) {
-    throwTips('DigitalHuman task alive')
+    throwTips('DigitalHuman task alive, taskID: ' + taskID)
     onInitDigitalHumanSuccess()
   } else if (status === DigitalHumanStatus.Initializing) {
     setTimeout(() => loopCheckAliveDigitalHuman(taskID), 1500)
@@ -316,7 +320,7 @@ async function initDigitalHuman() {
     const status = await checkAliveDigitalHuman(taskID)
     if (status === DigitalHumanStatus.Pushing) {
       // 如果有存活, 就不管了, 拉流就行
-      throwTips('Last task is alive')
+      throwTips('Last task is alive, taskID: ' + taskID)
       onInitDigitalHumanSuccess()
       return
     } else if (status === DigitalHumanStatus.Initializing) {
@@ -370,7 +374,7 @@ const timingTimer = new Timer(elapsed => {
   if (remainTime.value <= 0) {
     throwTips('Time over. Refresh page please!')
     timingTimer.stop()
-    // isInited.value = false
+    isInited.value = false
   }
 }, 1000)
 
