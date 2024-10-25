@@ -32,7 +32,7 @@
     <div class="right-panel">
       <!-- 右侧内容 -->
       <h1>
-        Digital Human
+        PaaS  Digital Human
       </h1>
       <h4>Time Limit {{ remainTime }}s</h4>
       <div id="remote-video"></div>
@@ -178,8 +178,8 @@ async function createNewDigitalHuman(roomID: string, streamID: string, metaHuman
       // 楚瑶
       MetaHumanId: metaHumanID,
       Layout: {
-        "Top": 0,
-        "Left": 690,
+        "Top": 120,
+        "Left": 1920 - 640,
         "Width": 540,
         "Height": 960,
         "Layer": 1
@@ -321,6 +321,7 @@ const timingTimer = new Timer(elapsed => {
   if (remainTime.value <= 0) {
     throwTips('Time over. Refresh page please!')
     timingTimer.stop()
+    // isInited.value = false
   }
 }, 1000)
 
@@ -354,6 +355,7 @@ async function onStopClick() {
       throwError(result.Code, result.Message)
       return
     } else {
+      timingTimer.stop()
       isInited.value = false
       localStorage.clear()
     }
@@ -409,7 +411,7 @@ a {
 }
 
 #remote-video {
-  width: 720px;
+  width: 960px;
   height: 540px;
   border: 1px solid #dfdfdf;
 }
