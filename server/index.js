@@ -23,6 +23,14 @@ app.use(cors());
 // 使用 express.json() 中间件来解析 JSON 请求体
 app.use(express.json());
 
+// 自定义中间件，用于记录请求日志和请求参数
+app.use((req, res, next) => {
+  console.log(`Request ${req.method}:${req.url}`);
+
+  // 继续处理请求
+  next();
+});
+
 app.get('/api', (req, res) => {
   res.send('Hello World!');
 });

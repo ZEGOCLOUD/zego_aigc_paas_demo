@@ -83,10 +83,10 @@ function generateToken04(appId, userId, secret, effectiveTimeInSeconds, payload)
     };
     // 把token信息转成json
     var plaintText = JSON.stringify(tokenInfo);
-    console.log('plain text: ', plaintText);
+    // console.log('plain text: ', plaintText);
     // 随机生成的 16 字节串，用作 AES 加密向量，放在密文前一起做Base64编码生成最终 token
     var iv = makeRandomIv();
-    console.log('iv', iv);
+    // console.log('iv', iv);
     /// 进行加密
     var encryptBuf = aesEncrypt(plaintText, secret, iv);
     // token 二进制拼接  过期时间 + Base64(iv长度 + iv + 加密信息长度 + 加密信息)

@@ -37,6 +37,11 @@
       </div>
 
       <div v-if="isInited" class="input-container">
+        <div class="preset-container">Presets: <select v-model="selectedPreset" class="custom-select">
+            <option v-for="voice in presetList" :key="voice.value" :value="voice.value">
+              {{ voice.label }}
+            </option>
+          </select></div>
         <textarea v-model="inputText" class="textarea" placeholder="Input text to drive digital human"></textarea>
         <button @click="onSendClick" class="button send-button">2. Send Text</button>
       </div>
@@ -63,7 +68,7 @@ import { ZegoAPI } from "../network/ZegoAPI";
 import { nextTick, ref, watch } from 'vue';
 import { Timer } from '@/utils/Timer';
 
-import config from '../config.json'
+import config from '../config'
 import { getResponseCodeDescriptionEnSafe, getResponseCodeDescriptionSafe } from '@/network/APIError';
 
 const getUrlParam = (key: string) => {
@@ -73,17 +78,33 @@ const getUrlParam = (key: string) => {
 
 const isTest = parseInt(getUrlParam('test')) === 1
 
-const { AppID, RtcServer, ApiServer } = config
+const { AppID, RtcServer, ApiServer, Humans, Voices } = config
 
 const { SignatureServer, MaxLiveTime } = config[isTest ? 'Test' : 'Prod']
-
 
 const zegoApi = new ZegoAPI(SignatureServer, ApiServer);
 
 const tipMessages = ref<string[]>([])
 const errorMessage = ref('')
-const inputText = ref("Good morning! Today, I stand before you to talk about the power of unity. In a world that often seems divided, it's easy to forget that we are all part of the same human family. Our differences should be celebrated, not feared. ")
 
+const presetList = ref([
+  { label: 'English', value: "Good morning! Today, I stand before you to talk about the power of unity. In a world that often seems divided, it's easy to forget that we are all part of the same human family. Our differences should be celebrated, not feared. " },
+  { label: 'Spanish', value: "Una vez, en un pueblo lejano, vivía un niño llamado José. José tenía un gran deseo de explorar el mundo. Un día, encontró un mapa antiguo que le mostró el camino hacia una isla misteriosa. Con valentía y esperanza, partió en su aventura, aprendiendo que cada viaje es una historia que nos enseña a crecer." },
+])
+
+const selectedPreset = ref(presetList.value[0].value)
+const inputText = ref(selectedPreset.value)
+
+watch(selectedPreset, (newVal, oldVal) => {
+  inputText.value = newVal
+});
+
+
+function getDefaultItem<T extends { default?: boolean }>(list: T[]): T {
+  const defaultItem = list.find(item => item.default === true);
+  console.log(defaultItem || list[0])
+  return defaultItem || list[0];
+}
 
 const seed = parseInt(getUrlParam('seed'), 10) || localStorage.seed || Date.now();
 localStorage.seed = seed
@@ -91,36 +112,25 @@ const rtcRoomID = 'zego_test_' + seed
 const rtcUserID = 'test_user_' + seed
 const rtcStreamID = 'stream_digitalhuman_' + seed
 
-const humanList = ref([
-  { value: '2929ebf1-a443-4d41-b414-81d9f107992a', label: 'Man(1.6)' },
-  { value: '14c12c0a-5b9f-4a2c-a381-861142e51593', label: 'Woman(2.0)' },
-]);
+const humanList = ref(Humans);
 
-const selectedHuman = ref(humanList.value[1].value)
+const selectedHuman = ref(getDefaultItem(Humans).value)
 
 watch(selectedHuman, (newVal, oldVal) => {
   throwTips('Selected new human, need to stop and start again')
 });
 
-const timbreList = ref([
-  { value: '5611f5db-42ea-435f-8f02-0562833c3717', label: 'ManVoice1' },
-  { value: '358f2618-1eb5-4306-99e9-28efb02d5094', label: 'ManVoice2' },
+const timbreList = ref(Voices);
 
-  { value: 'd88b47af-ef58-485f-a9e1-e1dbfeae3879', label: 'WomanVoice1' },
-  { value: '2974dd0a-00c5-4000-8421-715753e36c07', label: 'WomanVoice2' },
-  { value: 'aef8a17e-4a22-42d7-8057-a72acd3b19f4', label: 'WomanVoice3' },
-  { value: '2c15780e-2e04-4e92-8e3d-75f5fd762e6a', label: 'WomanVoice4' },
-]);
-
-const selectedTimbre = ref(timbreList.value[2].value)
+const selectedTimbre = ref(getDefaultItem(Voices).value)
 
 watch(selectedTimbre, (newVal, oldVal) => {
   throwTips('Selected new voice, need to stop and start again')
 });
 
 function throwTips(message: string) {
-  tipMessages.value.push(message)
-  nextTick(scrollToBottom)
+  tipMessages.value.push('[*] ' + message)
+  nextTick(() => nextTick(scrollToBottom))
 }
 
 const scrollToBottom = () => {
@@ -184,9 +194,9 @@ async function initRTC() {
 }
 
 function throwError(code: number, message: string) {
-  console.error(`${code}: ${message} \n${getResponseCodeDescriptionSafe(code)}`)
-  alert(`${code}: ${getResponseCodeDescriptionEnSafe(code)}`)
-  errorMessage.value = `${code}: ${getResponseCodeDescriptionEnSafe(code)}`
+  console.error(`${code}: ${getResponseCodeDescriptionSafe(code)}\n${message}`)
+  alert(`${code}: ${getResponseCodeDescriptionEnSafe(code)}\n${message}`)
+  errorMessage.value = `${code}: ${getResponseCodeDescriptionEnSafe(code)} - ${message}`
 }
 
 // 1：视频流任务初始化中。
@@ -202,16 +212,15 @@ enum DigitalHumanStatus {
   Stopped = 5
 }
 
-async function checkAliveDigitalHuman(taskID: string): Promise<DigitalHumanStatus> {
+async function checkAliveDigitalHuman(taskID: string): Promise<[DigitalHumanStatus, string]> {
   // 查询视频流任务状态
   let result = await zegoApi.describeMetaHumanLive(taskID);
   console.log(result);
   if (result.Code !== 0) {
     throwError(result.Code, result.Message)
-    return DigitalHumanStatus.InitFailed
+    return [DigitalHumanStatus.InitFailed, result.Message]
   }
-
-  return result.Data.Status;
+  return [result.Data.Status, result.Data.FailReason];
 
 }
 
@@ -241,8 +250,7 @@ async function createNewDigitalHuman(roomID: string, streamID: string, metaHuman
         "Height": 1080,
         "Layer": 0
       }
-    }
-    ],
+    }],
     VideoOption: {
       "Width": 1920,
       "Height": 1080
@@ -258,6 +266,7 @@ async function createNewDigitalHuman(roomID: string, streamID: string, metaHuman
   return result.Data.TaskId;
 }
 
+// 查询一共有多少数字人
 async function queryMetaHuman() {
   // 查询有哪些数字人
   let result = await zegoApi.describeMetaHumanModel();
@@ -278,6 +287,7 @@ async function queryMetaHuman() {
   }
 }
 
+// 查询这个数字人有哪些音色
 async function queryMetaHumanVoice(metaHumanId: string) {
   const result = await zegoApi.describeTimbreByMetaHuman(metaHumanId);
   console.log(result);
@@ -298,7 +308,7 @@ function onInitDigitalHumanSuccess() {
 }
 
 async function loopCheckAliveDigitalHuman(taskID: string) {
-  const status = await checkAliveDigitalHuman(taskID)
+  const [status, message] = await checkAliveDigitalHuman(taskID)
   if (status === DigitalHumanStatus.Pushing) {
     throwTips('DigitalHuman task alive, taskID: ' + taskID)
     onInitDigitalHumanSuccess()
@@ -306,7 +316,7 @@ async function loopCheckAliveDigitalHuman(taskID: string) {
     setTimeout(() => loopCheckAliveDigitalHuman(taskID), 1500)
   } else {
     // 已经出错了, 不要轮训了
-    throwError(-1, 'DigitalHuman task dead')
+    throwError(-1, 'DigitalHuman task dead: ' + message)
   }
 }
 
@@ -317,7 +327,7 @@ async function initDigitalHuman() {
   let taskID = localStorage.lastTaskID
   if (taskID) {
     throwTips('Checking last task...')
-    const status = await checkAliveDigitalHuman(taskID)
+    const [status] = await checkAliveDigitalHuman(taskID)
     if (status === DigitalHumanStatus.Pushing) {
       // 如果有存活, 就不管了, 拉流就行
       throwTips('Last task is alive, taskID: ' + taskID)
@@ -513,7 +523,7 @@ a {
   /* 最大宽度 */
   margin: 20px auto;
   /* 居中显示 */
-  text-align: center;
+  text-align: left;
   /* 文本居中 */
 }
 
@@ -613,6 +623,7 @@ a {
   /* 基本样式 */
   padding: 10px;
   font-size: 16px;
+  width: 150px;
   border: 1px solid #ccc;
   border-radius: 4px;
   background-color: #fff;
@@ -632,13 +643,6 @@ a {
   transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-.human-selector .custom-select {
-  width: 150px;
-}
-
-.voice-selector .custom-select {
-  width: 150px;
-}
 
 
 .custom-select:focus {
@@ -651,5 +655,9 @@ a {
   content: "";
   display: table;
   clear: both;
+}
+
+.preset-container {
+  padding: 10px 0;
 }
 </style>
