@@ -3,17 +3,17 @@
     <div class="left-panel ">
       <!-- 左侧内容 -->
       <div class="panel-header clearfix">
-        <div class="voice-selector">
-          <select v-model="selectedTimbre" class="custom-select">
-            <option v-for="voice in timbreList" :key="voice.value" :value="voice.value">
-              {{ voice.label }}
-            </option>
-          </select>
-        </div>
         <div class="human-selector">
           <select v-model="selectedHuman" class="custom-select">
             <option v-for="human in humanList" :key="human.value" :value="human.value">
               {{ human.label }}
+            </option>
+          </select>
+        </div>
+        <div class="voice-selector">
+          <select v-model="selectedTimbre" class="custom-select">
+            <option v-for="voice in timbreList" :key="voice.value" :value="voice.value">
+              {{ voice.label }}
             </option>
           </select>
         </div>
@@ -451,6 +451,7 @@ a {
 
 .left-panel {
   width: 30%;
+  min-width: 380px;
   /* 左侧面板宽度 */
   background-color: #f0f0f0;
   /* 背景颜色 */
