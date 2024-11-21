@@ -143,12 +143,12 @@ let isInited = ref(false)
 
 async function initRTC() {
   throwTips('Initializing RTC...')
-  // 初始化实例
+  // Initialize the instance
   const zg = new ZegoExpressEngine(AppID, RtcServer);
 
-  // 房间状态更新回调
-  // 此处在登录房间成功后，立即进行推流。在实现具体业务时，您可选择其他时机进行推流，只要保证当前房间连接状态是连接成功的即可。
-  // 房间状态更新回调
+  // Room state update callback
+  // In this example, we start streaming immediately after logging into the room. In a real-world application, you can choose to start streaming at any time as long as the room connection is successful.
+  // Room state update callback
   zg.on('roomStateChanged', async (roomID, reason, errorCode, extendedData) => {
     if (reason == 'LOGINED') {
       console.warn("与房间连接成功，只有当房间状态是连接成功时，才能进行推流、拉流等操作。")
@@ -161,20 +161,20 @@ async function initRTC() {
   });
 
   zg.on('roomStreamUpdate', async (roomID, updateType, streamList, extendedData) => {
-    // 房间内其他用户音视频流变化的通知
+    // Notification of changes in audio and video streams of other users in the room
     if (updateType == 'ADD') {
-      // 流新增，开始拉流
-      // 此处演示拉取流新增的列表中第一条流的音视频
+      // Stream added, start pulling the stream
+      // This example demonstrates how to pull the audio and video of the first stream in the list of added streams.
       const streamID = streamList[0].streamID;
       console.warn("[Zego]room stream update: " + streamID)
-      // streamList 中有对应流的 streamID
+      // streamList contains the streamID of the corresponding stream
       const remoteStream = await zg.startPlayingStream(streamID);
-      // 创建媒体流播放组件
+      // Create a media stream playback component
       const remoteView = zg.createRemoteStreamView(remoteStream);
       remoteView.play("remote-video", { enableAutoplayDialog: true });
 
     } else if (updateType == 'DELETE') {
-      // 流删除，通过流删除列表 streamList 中每个流的 streamID 进行停止拉流。
+      // Stream deleted, stop pulling the stream by the streamID of each stream in the stream deletion list streamList.
       const streamID = streamList[0].streamID;
       zg.stopPlayingStream(streamID)
     }
@@ -199,11 +199,12 @@ function throwError(code: number, message: string) {
   errorMessage.value = `${code}: ${getResponseCodeDescriptionEnSafe(code)} - ${message}`
 }
 
-// 1：视频流任务初始化中。
-// 2：视频流任务初始化失败。
-// 3：推流中。
-// 4：正在停止推流。
-// 5：已停止推流。
+// 1: The video streaming task is initializing.
+// 2: The video streaming task initialization failed.
+// 3: Streaming.
+// 4: Stopping streaming.
+// 5: Streaming has stopped.
+
 enum DigitalHumanStatus {
   Initializing = 1,
   InitFailed = 2,
@@ -213,7 +214,7 @@ enum DigitalHumanStatus {
 }
 
 async function checkAliveDigitalHuman(taskID: string): Promise<[DigitalHumanStatus, string]> {
-  // 查询视频流任务状态
+  // Query the status of the video streaming task
   let result = await zegoApi.describeMetaHumanLive(taskID);
   console.log(result);
   if (result.Code !== 0) {
@@ -241,7 +242,7 @@ async function createNewDigitalHuman(roomID: string, streamID: string, metaHuman
     },
     Assets: [{
       "AssetType": 1,
-      // 图片分辨率 1052 * 592
+      // The resolution of this picture is 1052 * 592
       "AssetUrl": "https://zego-aigc-test.oss-accelerate.aliyuncs.com/bg/20241025/b7adee2e-efcb-435d-b11d-e4df19c5f0d7.png",
       "Layout": {
         "Top": 0,
@@ -266,9 +267,9 @@ async function createNewDigitalHuman(roomID: string, streamID: string, metaHuman
   return result.Data.TaskId;
 }
 
-// 查询一共有多少数字人
+
 async function queryMetaHuman() {
-  // 查询有哪些数字人
+  // Query the number of digital humans
   let result = await zegoApi.describeMetaHumanModel();
   console.log(result);
   if (result.Code !== 0) {
@@ -276,9 +277,9 @@ async function queryMetaHuman() {
     return
   }
 
-  // 从 result.Data 找一个 modelID
+  // Find a modelID from result.Data
   const modelID = result.Data[0].MetaHumanId
-  // 查询数字人详情
+  // Query digital human details
   result = await zegoApi.describeMetaHumanModelDetail(modelID);
   console.log(result);
   if (result.Code !== 0) {
@@ -287,7 +288,7 @@ async function queryMetaHuman() {
   }
 }
 
-// 查询这个数字人有哪些音色
+// Query what timbres this digital human has
 async function queryMetaHumanVoice(metaHumanId: string) {
   const result = await zegoApi.describeTimbreByMetaHuman(metaHumanId);
   console.log(result);
@@ -301,7 +302,7 @@ function onInitDigitalHumanSuccess() {
   isInited.value = true;
   timingTimer.start()
   if (localStorage.startTime) {
-    // 已经开始过了的, 矫正时间, 
+    // It has already started, correct the time,
     const useTime = ~~((Date.now() - parseInt(localStorage.startTime)) / 1000)
     remainTime.value = MaxLiveTime - useTime
   }
@@ -315,39 +316,41 @@ async function loopCheckAliveDigitalHuman(taskID: string) {
   } else if (status === DigitalHumanStatus.Initializing) {
     setTimeout(() => loopCheckAliveDigitalHuman(taskID), 1500)
   } else {
-    // 已经出错了, 不要轮训了
+    // The task has already failed, no need to poll
     throwError(-1, 'DigitalHuman task dead: ' + message)
   }
 }
 
+
+// Main digital human logic
 async function initDigitalHuman() {
   throwTips('Initializing DigitalHuman...')
 
-  // 检查一下有没有已经在推流的数字人
+  // Check if there is a digital human already pushing a stream
   let taskID = localStorage.lastTaskID
   if (taskID) {
     throwTips('Checking last task...')
     const [status] = await checkAliveDigitalHuman(taskID)
     if (status === DigitalHumanStatus.Pushing) {
-      // 如果有存活, 就不管了, 拉流就行
+      // If there is an active task, ignore it and just pull the stream
       throwTips('Last task is alive, taskID: ' + taskID)
       onInitDigitalHumanSuccess()
       return
     } else if (status === DigitalHumanStatus.Initializing) {
-      // 还在初始化, 等检测
+      // If the task is still initializing, wait for it to become active
       throwTips('Waiting new task alive...')
       loopCheckAliveDigitalHuman(taskID)
       return
     }
   }
-  // 没有在推流的, 重新创建
+  // No active task, create a new one
   throwTips('Creating new task...')
   taskID = await createNewDigitalHuman(rtcRoomID, rtcStreamID, selectedHuman.value)
 
   if (taskID) {
     localStorage.lastTaskID = taskID
     localStorage.startTime = Date.now()
-    // 创建成功, 等推流, 写个 loop 2s 检测一次 checkAliveDigitalHuman
+    // Task created successfully, wait for it to become active
     throwTips('Waiting new task alive...')
     loopCheckAliveDigitalHuman(taskID)
   } else {

@@ -2,6 +2,11 @@
 
 本项目包含前端页面和后端接口，旨在为开发者提供参考示例。
 
+该工程要正常运行起来，需要通时把后端服务和前端服务都启动起来。后端服务在 server 目录下, 负责为调用数字人PaaS接口提供生成token的能力.
+前端服务在 src 目录下，负责显示页面和完成UI交互逻辑, 并从 server 获取 token 后调用数字人PaaS接口，创建数字人和使用文本驱动, 同时也创了 Express 示例, 拉取数字人生成的视频流进行显示.
+
+页面的主要逻辑集中在`src/components/HelloWorld.vue`文件中。
+
 ## 快速开始
 
 ### 1. 配置后端服务
@@ -17,13 +22,17 @@
 
 ### 3. 配置前端应用
 
-- **修改配置文件**：编辑 `./src/config.json` 文件，按需修改 `AppId`、`ApiServer` 和 `RtcServer` 的值。
+- **修改配置文件**：编辑 `./src/config.ts` 文件，按需修改 `AppId` 和 `RtcServer` 的值。`ApiServer` 一般不需要修改, 如果ZEGO提供了其他域名才需要变更.
 
 ### 4. 启动前端应用
 
 - **进入目录**：`cd ./src`
 - **安装依赖**：`npm install`
 - **启动服务**：`npm run serve`
+
+### 5. 访问应用
+
+- **访问本地服务**: `./src/config.ts` 中配置了 `Test` 和 `Prod` 两个环境, 如果是本地运行的 `server`, 那么页面的url需要加上 `?test=1`, 如: `http://localhost:8081/?test=1`.
 
 
 ## 附录：配置国内 `npm` 源并安装 `pnpm` 
