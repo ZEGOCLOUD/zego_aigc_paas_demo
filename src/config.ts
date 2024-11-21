@@ -1,6 +1,6 @@
 export default {
-    "AppID": 2508486932,
-    "RtcServer": "wss://webliveroom2508486932-api.imzego.com/ws",
+    "AppID": 0, // example: 123456789
+    "RtcServer": "", // example: wss://webliveroom123456789-api.imzego.com/ws
     "ApiServer": "https://aigc-api.zegotech.cn",
     "Prod": {
         "SignatureServer": "//feedeo-robot-demo.spreading.ai/api",
