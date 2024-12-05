@@ -8,7 +8,7 @@
 
 前端服务在 src 目录下，负责显示页面和完成UI交互逻辑, 并从 server 获取 token 后调用数字人PaaS接口，创建数字人和使用文本驱动, 同时也创了 Express 示例, 拉取数字人生成的视频流进行显示.
 
-页面的主要逻辑集中在`src/components/HelloWorld.vue`文件中。
+页面的主要逻辑集中在`src/components/HelloWorld.vue`文件中, 入口在 `onStartClick` 函数。
 
 ## 快速开始
 

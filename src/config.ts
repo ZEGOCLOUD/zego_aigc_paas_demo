@@ -1,6 +1,6 @@
 export default {
-    "AppID": 0, // example: 123456789
-    "RtcServer": "", // example: wss://webliveroom123456789-api.imzego.com/ws
+    "AppID": 2508486932, // example: 123456789
+    "RtcServer": "wss://webliveroom2508486932-api.imzego.com/ws", // example: wss://webliveroom123456789-api.imzego.com/ws
     "ApiServer": "https://aigc-api.zegotech.cn",
     "Prod": {
         "SignatureServer": "//feedeo-robot-demo.spreading.ai/api",
@@ -16,7 +16,7 @@ export default {
         //     "label": "Male(v1.6)"
         // },
         {
-            "value": "14c12c0a-5b9f-4a2c-a381-861142e51593",
+            "value": "50093f6e-6af0-4da7-8ae6-484eb8b6b80f",
             "label": "Female(v2.0)",
             "default": true,
         }
